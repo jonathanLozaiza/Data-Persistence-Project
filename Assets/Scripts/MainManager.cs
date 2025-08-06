@@ -1,5 +1,7 @@
+using NUnit.Framework.Internal;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -11,10 +13,12 @@ public class MainManager : MonoBehaviour
     public Rigidbody Ball;
 
     public Text ScoreText;
+    public Text BestScoreText;
     public GameObject GameOverText;
     
     private bool m_Started = false;
-    private int m_Points;
+    private int m_Points = 0;
+    private int bestScore = 0;
     
     private bool m_GameOver = false;
 
@@ -22,6 +26,11 @@ public class MainManager : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        if (MainStoreManager.Instance != null)
+        {
+            LoadScore();
+            BestScoreText.text = $"Best Score : {MainStoreManager.Instance.username} : {bestScore}";
+        }
         const float step = 0.6f;
         int perLine = Mathf.FloorToInt(4.0f / step);
         
@@ -62,10 +71,40 @@ public class MainManager : MonoBehaviour
         }
     }
 
+    [System.Serializable]
+    class SaveData
+    {
+        public int score;
+    }
+
     void AddPoint(int point)
     {
         m_Points += point;
         ScoreText.text = $"Score : {m_Points}";
+        if (m_Points > bestScore)
+        {
+            bestScore = m_Points;
+            SaveScore(bestScore);
+        }
+    }
+
+    void SaveScore(int score)
+    {
+        SaveData data = new SaveData();
+        data.score = score;
+        string json = JsonUtility.ToJson(data);
+        File.WriteAllText(Application.persistentDataPath + "/saveData.json", json);
+    }
+
+    void LoadScore()
+    {
+        string path = Application.persistentDataPath + "/saveData.json";
+        if (File.Exists(path))
+        {
+            string json = File.ReadAllText(path);
+            SaveData data = JsonUtility.FromJson<SaveData>(json);
+            bestScore = data.score;
+        }
     }
 
     public void GameOver()
